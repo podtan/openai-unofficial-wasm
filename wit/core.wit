@@ -1,0 +1,32 @@
+package abk:extension@0.3.0;
+
+/// Core interface - ALL extensions MUST implement this
+/// This provides basic metadata and initialization for every extension.
+interface core {
+    /// Extension metadata
+    record extension-metadata {
+        /// Unique extension identifier
+        id: string,
+        /// Human-readable name
+        name: string,
+        /// Extension version (semver)
+        version: string,
+        /// API version this extension targets
+        api-version: string,
+        /// Description of what the extension does
+        description: string,
+    }
+    
+    /// Get extension metadata
+    /// Returns metadata about this extension
+    get-metadata: func() -> extension-metadata;
+    
+    /// List capabilities this extension provides
+    /// Returns list of capability names (e.g., ["lifecycle"], ["provider"], ["lifecycle", "provider"])
+    list-capabilities: func() -> list<string>;
+    
+    /// Initialize extension
+    /// Called once when the extension is first loaded
+    /// Returns Ok(()) on success, Err(message) on failure
+    init: func() -> result<_, string>;
+}

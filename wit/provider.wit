@@ -1,0 +1,133 @@
+package abk:extension@0.3.0;
+
+/// Provider capability interface
+/// Extensions with provider capability handle LLM API communication
+/// including request formatting, response parsing, and streaming.
+interface provider {
+    /// Provider configuration
+    record config {
+        /// Base URL for the API
+        base-url: string,
+        /// API key for authentication
+        api-key: string,
+        /// Default model to use
+        default-model: string,
+    }
+
+    /// Chat message
+    record message {
+        /// Message role (system, user, assistant, tool)
+        role: string,
+        /// Message content
+        content: string,
+    }
+
+    /// Tool definition for function calling
+    record tool {
+        /// Tool/function name
+        name: string,
+        /// Tool description
+        description: string,
+        /// JSON Schema string for parameters
+        parameters: string,
+    }
+
+    /// Tool call in response
+    record tool-call {
+        /// Unique identifier for the tool call
+        id: string,
+        /// Name of the tool/function to call
+        name: string,
+        /// JSON string of arguments
+        arguments: string,
+    }
+
+    /// Assistant message response
+    record assistant-message {
+        /// Text content (if any)
+        content: option<string>,
+        /// Tool calls (if any)
+        tool-calls: list<tool-call>,
+    }
+
+    /// Streaming content delta
+    record content-delta {
+        /// Type of delta (content, tool_call, done, error)
+        delta-type: string,
+        /// Content text delta (if type is content)
+        content: option<string>,
+        /// Tool call index (for tool_call type, matches OpenAI streaming index)
+        tool-call-index: option<u32>,
+        /// Tool call delta (if type is tool_call)
+        tool-call: option<tool-call>,
+        /// Error message (if type is error)
+        error: option<string>,
+    }
+
+    /// Error type for provider operations
+    record provider-error {
+        /// Error message
+        message: string,
+        /// Optional error code
+        code: option<string>,
+    }
+
+    /// Get provider metadata
+    /// Returns JSON with provider name, version, supported models, etc.
+    get-provider-metadata: func() -> string;
+
+    /// Format request for the LLM API
+    /// messages: List of conversation messages
+    /// config: Provider configuration
+    /// tools: Optional list of tools available for function calling
+    /// Returns formatted JSON request body
+    format-request: func(
+        messages: list<message>,
+        config: config,
+        tools: option<list<tool>>
+    ) -> result<string, provider-error>;
+
+    /// Parse response from provider API
+    /// body: Raw JSON response body
+    /// model: Model string for backend detection
+    /// Returns parsed assistant message
+    parse-response: func(body: string, model: string) -> result<assistant-message, provider-error>;
+
+    /// Handle streaming chunk
+    /// chunk: SSE chunk data
+    /// Returns content delta if chunk contains data, none if should be skipped
+    handle-stream-chunk: func(chunk: string) -> option<content-delta>;
+
+    /// Get API URL for a model
+    /// base-url: Base URL from config
+    /// model: Model string to determine endpoint
+    /// Returns full URL with appropriate endpoint appended
+    get-api-url: func(base-url: string, model: string) -> string;
+
+    /// Check if streaming is supported for a model
+    /// model: Model string to check
+    /// Returns true if streaming is fully supported
+    supports-streaming: func(model: string) -> bool;
+
+    /// Format request from raw JSON messages (handles complex tool messages)
+    /// This is used when messages contain tool_call_id, tool_calls arrays, etc.
+    /// that can't be represented in the simple message record.
+    /// 
+    /// messages-json: JSON array of InternalMessage structures
+    /// model: Model string
+    /// tools-json: Optional JSON array of tool definitions
+    /// tool-choice-json: Optional tool choice ("auto", "required", "none", or {"type":"function","function":{"name":"x"}})
+    /// max-tokens: Optional max tokens limit
+    /// temperature: Temperature for sampling (0.0-2.0)
+    /// enable-streaming: Whether to enable streaming mode
+    /// Returns JSON string ready to send as HTTP body
+    format-request-from-json: func(
+        messages-json: string,
+        model: string,
+        tools-json: option<string>,
+        tool-choice-json: option<string>,
+        max-tokens: option<u32>,
+        temperature: f32,
+        enable-streaming: bool
+    ) -> result<string, provider-error>;
+}

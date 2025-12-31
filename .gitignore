@@ -1,0 +1,51 @@
+# Rust/Cargo build artifacts
+/target/
+**/target/
+
+# Cargo lock (libraries may commit or ignore)
+Cargo.lock
+
+# Generated build files
+**/*.rlib
+**/*.so
+**/*.dylib
+**/*.dll
+**/*.exe
+**/*.pdb
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Editor swap/backup files
+*~
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (do not commit secrets)
+.env
+.env.secret
+
+# Logs and temporary files
+*.log
+logs/
+
+tmp/
+
+# Coverage and profiling
+coverage/
+*.profraw
+
+# Documentation build artifacts
+book/
+
+# Backup files
+*.bak
+*.backup
+*.old

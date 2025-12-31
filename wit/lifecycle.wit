@@ -1,0 +1,77 @@
+package abk:extension@0.3.0;
+
+/// Lifecycle capability interface
+/// Extensions with lifecycle capability provide template management
+/// and task classification for coding agents.
+interface lifecycle {
+    /// Template variable for substitution
+    record template-variable {
+        /// Variable name (without braces)
+        key: string,
+        /// Variable value
+        value: string,
+    }
+
+    /// Template section extracted from markdown
+    record template-section {
+        /// Section name (from ## Header)
+        name: string,
+        /// Section content
+        content: string,
+    }
+
+    /// Error type for lifecycle operations
+    record lifecycle-error {
+        /// Error message
+        message: string,
+        /// Optional error code
+        code: option<string>,
+    }
+
+    /// Task classification result
+    record task-classification {
+        /// Task type (bug_fix, feature, maintenance, query, fallback)
+        task-type: string,
+        /// Confidence score (0.0 - 1.0)
+        confidence: f32,
+    }
+
+    /// Load template from embedded resources
+    /// template-name: Template identifier (e.g., "system", "task/bug_fix")
+    /// Returns template content as markdown string
+    load-template: func(template-name: string) -> result<string, lifecycle-error>;
+
+    /// Render template with variable substitution
+    /// content: Template markdown with {variable} placeholders
+    /// variables: List of key-value pairs for substitution
+    /// Returns rendered template content
+    render-template: func(content: string, variables: list<template-variable>) -> string;
+
+    /// Extract sections from markdown template
+    /// content: Markdown content with ## Section headers
+    /// Returns list of sections with names and content
+    extract-sections: func(content: string) -> list<template-section>;
+
+    /// Validate template variables
+    /// content: Template to analyze
+    /// Returns list of variable names found in template
+    validate-template-variables: func(content: string) -> list<string>;
+
+    /// Get task template path based on classification
+    /// task-type: Type of task (bug_fix, feature, maintenance, query)
+    /// Returns template identifier for the task type
+    get-task-template-name: func(task-type: string) -> string;
+
+    /// Classify task based on description
+    /// task-description: User's task description
+    /// Returns classification result with task type and confidence
+    classify-task: func(task-description: string) -> result<task-classification, lifecycle-error>;
+
+    /// Load useful commands content
+    /// Returns markdown content with available tools and commands
+    load-useful-commands: func() -> result<string, lifecycle-error>;
+
+    /// Get system information variables
+    /// Returns list of system info variables (os, arch, etc.)
+    get-system-info-variables: func() -> list<template-variable>;
+}

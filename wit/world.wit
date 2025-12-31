@@ -1,0 +1,34 @@
+package abk:extension@0.3.0;
+
+/// The unified extension world
+/// All ABK extensions implement this world, exporting:
+/// - core (required): Basic metadata and initialization
+/// - lifecycle (optional): Template management and task classification
+/// - provider (optional): LLM API communication
+/// 
+/// Extensions declare which capabilities they provide in extension.toml
+/// and export the corresponding interfaces.
+world extension {
+    /// Required: all extensions must export core interface
+    export core;
+    
+    /// Optional: lifecycle capability for template management
+    export lifecycle;
+    
+    /// Optional: provider capability for LLM communication
+    export provider;
+}
+
+/// Lifecycle-only extension world
+/// For extensions that only provide lifecycle capability
+world lifecycle-extension {
+    export core;
+    export lifecycle;
+}
+
+/// Provider-only extension world  
+/// For extensions that only provide provider capability
+world provider-extension {
+    export core;
+    export provider;
+}
