@@ -272,17 +272,18 @@ impl ProviderGuest for OpenAIProvider {
         enable_streaming: bool,
     ) -> Result<String, ProviderError> {
         // Parse messages from JSON
-        let messages: Vec<Value> = serde_json::from_str(&messages_json).map_err(|e| ProviderError {
-            message: format!("Failed to parse messages JSON: {}", e),
-            code: Some("JSON_PARSE_ERROR".to_string()),
-        })?;
+        let messages: Vec<Value> =
+            serde_json::from_str(&messages_json).map_err(|e| ProviderError {
+                message: format!("Failed to parse messages JSON: {}", e),
+                code: Some("JSON_PARSE_ERROR".to_string()),
+            })?;
 
         // Convert InternalMessage format to OpenAI format
         let openai_messages: Vec<Value> = messages
             .into_iter()
             .map(|msg| {
                 let role = msg["role"].as_str().unwrap_or("user");
-                
+
                 // Handle different message types
                 match role {
                     "tool" => {
@@ -290,7 +291,9 @@ impl ProviderGuest for OpenAIProvider {
                         let tool_call_id = msg["tool_call_id"].as_str().unwrap_or("");
                         let content = match &msg["content"] {
                             Value::String(s) => s.clone(),
-                            Value::Object(_) | Value::Array(_) => serde_json::to_string(&msg["content"]).unwrap_or_default(),
+                            Value::Object(_) | Value::Array(_) => {
+                                serde_json::to_string(&msg["content"]).unwrap_or_default()
+                            }
                             _ => String::new(),
                         };
                         json!({
@@ -304,28 +307,30 @@ impl ProviderGuest for OpenAIProvider {
                         let mut assistant_msg = json!({
                             "role": "assistant"
                         });
-                        
+
                         // Add content if present
                         if let Some(content) = msg["content"].as_str() {
                             if !content.is_empty() {
                                 assistant_msg["content"] = json!(content);
                             }
                         }
-                        
+
                         // Add tool_calls if present (from metadata or direct)
                         if let Some(tool_calls) = msg["metadata"]["tool_calls"].as_array() {
                             if !tool_calls.is_empty() {
                                 assistant_msg["tool_calls"] = json!(tool_calls);
                             }
                         }
-                        
+
                         assistant_msg
                     }
                     _ => {
                         // Regular user/system message
                         let content = match &msg["content"] {
                             Value::String(s) => s.clone(),
-                            Value::Object(_) | Value::Array(_) => serde_json::to_string(&msg["content"]).unwrap_or_default(),
+                            Value::Object(_) | Value::Array(_) => {
+                                serde_json::to_string(&msg["content"]).unwrap_or_default()
+                            }
                             _ => String::new(),
                         };
                         json!({
