@@ -303,9 +303,10 @@ impl ProviderGuest for OpenAIProvider {
                         })
                     }
                     "assistant" => {
-                        // Assistant message - may have tool_calls
+                        // Assistant message - may have tool_calls OpenAI requires content to be null when tool_calls present
                         let mut assistant_msg = json!({
-                            "role": "assistant"
+                            "role": "assistant",
+                            "content": null,
                         });
 
                         // Add content if present
