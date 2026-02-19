@@ -203,6 +203,7 @@ impl ProviderGuest for OpenAIProvider {
             return Some(WitContentDelta {
                 delta_type: "done".to_string(),
                 content: None,
+                reasoning: None,
                 tool_call_index: None,
                 tool_call: None,
                 error: None,
@@ -220,11 +221,37 @@ impl ProviderGuest for OpenAIProvider {
 
         let delta = &choices[0]["delta"];
 
+        // Debug: log the delta keys to see what fields are present
+        if std::env::var("RUST_LOG")
+            .map(|v| v.to_lowercase().contains("debug"))
+            .unwrap_or(false)
+        {
+            if let Some(obj) = delta.as_object() {
+                let keys: Vec<&str> = obj.keys().map(|s| s.as_str()).collect();
+                if !keys.is_empty() {
+                    eprintln!("[WASM DEBUG] delta keys: {:?}", keys);
+                }
+            }
+        }
+
+        // Check for reasoning_content delta (from thinking models like GLM, Qwen)
+        if let Some(reasoning) = delta["reasoning_content"].as_str() {
+            return Some(WitContentDelta {
+                delta_type: "reasoning".to_string(),
+                content: None,
+                reasoning: Some(reasoning.to_string()),
+                tool_call_index: None,
+                tool_call: None,
+                error: None,
+            });
+        }
+
         // Check for content delta
         if let Some(content) = delta["content"].as_str() {
             return Some(WitContentDelta {
                 delta_type: "content".to_string(),
                 content: Some(content.to_string()),
+                reasoning: None,
                 tool_call_index: None,
                 tool_call: None,
                 error: None,
@@ -246,6 +273,7 @@ impl ProviderGuest for OpenAIProvider {
                     return Some(WitContentDelta {
                         delta_type: "tool_call".to_string(),
                         content: None,
+                        reasoning: None,
                         tool_call_index: index,
                         tool_call: Some(WitToolCall {
                             id: id.unwrap_or_default(),
