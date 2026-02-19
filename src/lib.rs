@@ -124,6 +124,10 @@ impl ProviderGuest for OpenAIProvider {
         serde_json::to_string(&body).map_err(|e| ProviderError {
             message: format!("Failed to serialize request: {}", e),
             code: Some("SERIALIZATION_ERROR".to_string()),
+            http_status: None,
+            response_body: None,
+            is_retryable: Some(false),
+            retry_after: None,
         })
     }
 
@@ -132,12 +136,20 @@ impl ProviderGuest for OpenAIProvider {
         let response: OpenAIResponse = serde_json::from_str(&body).map_err(|e| ProviderError {
             message: format!("Failed to parse response: {}", e),
             code: Some("PARSE_ERROR".to_string()),
+            http_status: None,
+            response_body: Some(body.clone()),
+            is_retryable: Some(false),
+            retry_after: None,
         })?;
 
         if response.choices.is_empty() {
             return Err(ProviderError {
                 message: "No choices in response".to_string(),
                 code: Some("EMPTY_RESPONSE".to_string()),
+                http_status: None,
+                response_body: Some(body),
+                is_retryable: Some(false),
+                retry_after: None,
             });
         }
 
@@ -276,6 +288,10 @@ impl ProviderGuest for OpenAIProvider {
             serde_json::from_str(&messages_json).map_err(|e| ProviderError {
                 message: format!("Failed to parse messages JSON: {}", e),
                 code: Some("JSON_PARSE_ERROR".to_string()),
+                http_status: None,
+                response_body: Some(messages_json.clone()),
+                is_retryable: Some(false),
+                retry_after: None,
             })?;
 
         // Convert InternalMessage format to OpenAI format
@@ -410,6 +426,10 @@ impl ProviderGuest for OpenAIProvider {
         serde_json::to_string(&body).map_err(|e| ProviderError {
             message: format!("Failed to serialize request: {}", e),
             code: Some("SERIALIZATION_ERROR".to_string()),
+            http_status: None,
+            response_body: None,
+            is_retryable: Some(false),
+            retry_after: None,
         })
     }
 }

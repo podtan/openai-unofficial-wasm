@@ -70,6 +70,14 @@ interface provider {
         message: string,
         /// Optional error code
         code: option<string>,
+        /// HTTP status code if available (401, 429, 500, etc.)
+        http-status: option<u16>,
+        /// Raw response body for debugging
+        response-body: option<string>,
+        /// Whether this error is retryable
+        is-retryable: option<bool>,
+        /// Seconds to wait before retry (for rate limits)
+        retry-after: option<u32>,
     }
 
     /// Get provider metadata
