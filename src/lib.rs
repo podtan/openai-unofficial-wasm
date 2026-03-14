@@ -219,7 +219,29 @@ impl ProviderGuest for OpenAIProvider {
             return None;
         }
 
-        let delta = &choices[0]["delta"];
+        let choice = &choices[0];
+        let delta = &choice["delta"];
+
+        // Check finish_reason — if it's an error (not "stop", "tool_calls", or null),
+        // return an error delta so the caller can retry instead of ending the session
+        if let Some(finish_reason) = choice["finish_reason"].as_str() {
+            match finish_reason {
+                "stop" | "tool_calls" | "length" | "content_filter" | "function_call" => {
+                    // Normal finish reasons — let processing continue below
+                }
+                _ => {
+                    // Abnormal finish reason (e.g., "network_error") — return error
+                    return Some(WitContentDelta {
+                        delta_type: "error".to_string(),
+                        content: None,
+                        reasoning: None,
+                        tool_call_index: None,
+                        tool_call: None,
+                        error: Some(format!("finish_reason: {}", finish_reason)),
+                    });
+                }
+            }
+        }
 
         // Debug: log the delta keys to see what fields are present
         if std::env::var("RUST_LOG")
@@ -229,7 +251,9 @@ impl ProviderGuest for OpenAIProvider {
             if let Some(obj) = delta.as_object() {
                 let keys: Vec<&str> = obj.keys().map(|s| s.as_str()).collect();
                 if !keys.is_empty() {
-                    eprintln!("[WASM DEBUG] delta keys: {:?}", keys);
+                    eprintln!("[WASM DEBUG] delta keys: {:?}, finish_reason: {:?}",
+                        keys,
+                        choice["finish_reason"].as_str());
                 }
             }
         }
@@ -589,6 +613,27 @@ mod tests {
         let delta = OpenAIProvider::handle_stream_chunk(chunk.to_string());
         assert!(delta.is_some());
         assert_eq!(delta.unwrap().delta_type, "done");
+    }
+
+    #[test]
+    fn test_handle_stream_network_error() {
+        let chunk = r#"data: {"id":"test","model":"glm-5","choices":[{"index":0,"finish_reason":"network_error","delta":{"role":"assistant","content":""}}]}"#;
+        let delta = OpenAIProvider::handle_stream_chunk(chunk.to_string());
+        assert!(delta.is_some());
+        let delta = delta.unwrap();
+        assert_eq!(delta.delta_type, "error");
+        assert_eq!(delta.error, Some("finish_reason: network_error".to_string()));
+    }
+
+    #[test]
+    fn test_handle_stream_stop_finish_reason() {
+        // "stop" finish_reason should NOT be treated as error
+        let chunk = r#"data: {"choices":[{"finish_reason":"stop","delta":{"content":"done"}}]}"#;
+        let delta = OpenAIProvider::handle_stream_chunk(chunk.to_string());
+        assert!(delta.is_some());
+        let delta = delta.unwrap();
+        assert_eq!(delta.delta_type, "content");
+        assert_eq!(delta.content, Some("done".to_string()));
     }
 
     #[test]
