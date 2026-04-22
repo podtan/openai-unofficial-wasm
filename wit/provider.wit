@@ -48,6 +48,8 @@ interface provider {
         content: option<string>,
         /// Tool calls (if any)
         tool-calls: list<tool-call>,
+        /// Reasoning/thinking content (for thinking models like GLM, DeepSeek)
+        reasoning: option<string>,
     }
 
     /// Streaming content delta

@@ -158,6 +158,9 @@ impl ProviderGuest for OpenAIProvider {
         // Extract content
         let content = message.content.clone();
 
+        // Extract reasoning content
+        let reasoning = message.reasoning_content.clone();
+
         // Extract tool calls
         let tool_calls: Vec<WitToolCall> = message
             .tool_calls
@@ -177,6 +180,7 @@ impl ProviderGuest for OpenAIProvider {
         Ok(WitAssistantMessage {
             content,
             tool_calls,
+            reasoning,
         })
     }
 
@@ -251,9 +255,11 @@ impl ProviderGuest for OpenAIProvider {
             if let Some(obj) = delta.as_object() {
                 let keys: Vec<&str> = obj.keys().map(|s| s.as_str()).collect();
                 if !keys.is_empty() {
-                    eprintln!("[WASM DEBUG] delta keys: {:?}, finish_reason: {:?}",
+                    eprintln!(
+                        "[WASM DEBUG] delta keys: {:?}, finish_reason: {:?}",
                         keys,
-                        choice["finish_reason"].as_str());
+                        choice["finish_reason"].as_str()
+                    );
                 }
             }
         }
@@ -507,7 +513,10 @@ struct ResponseMessage {
     #[allow(dead_code)]
     role: String,
     content: Option<String>,
+    #[allow(dead_code)]
     tool_calls: Option<Vec<OpenAIToolCall>>,
+    /// Reasoning/thinking content (for thinking models like GLM, DeepSeek)
+    reasoning_content: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -622,7 +631,10 @@ mod tests {
         assert!(delta.is_some());
         let delta = delta.unwrap();
         assert_eq!(delta.delta_type, "error");
-        assert_eq!(delta.error, Some("finish_reason: network_error".to_string()));
+        assert_eq!(
+            delta.error,
+            Some("finish_reason: network_error".to_string())
+        );
     }
 
     #[test]
