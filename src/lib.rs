@@ -361,14 +361,19 @@ impl ProviderGuest for OpenAIProvider {
                 // Handle different message types
                 match role {
                     "tool" => {
-                        // Tool result message
+                        // Tool result message — extract content from Blocks array or plain string
                         let tool_call_id = msg["tool_call_id"].as_str().unwrap_or("");
-                        let content = match &msg["content"] {
-                            Value::String(s) => s.clone(),
-                            Value::Object(_) | Value::Array(_) => {
-                                serde_json::to_string(&msg["content"]).unwrap_or_default()
-                            }
-                            _ => String::new(),
+                        let content = if let Some(blocks) = msg["content"].as_array() {
+                            // InternalMessage with MessageContent::Blocks: extract tool_result content
+                            blocks.iter()
+                                .find(|b| b["type"].as_str() == Some("tool_result"))
+                                .and_then(|b| b["content"].as_str())
+                                .unwrap_or("")
+                                .to_string()
+                        } else if let Some(s) = msg["content"].as_str() {
+                            s.to_string()
+                        } else {
+                            String::new()
                         };
                         json!({
                             "role": "tool",
@@ -377,24 +382,53 @@ impl ProviderGuest for OpenAIProvider {
                         })
                     }
                     "assistant" => {
-                        // Assistant message - may have tool_calls OpenAI requires content to be null when tool_calls present
+                        // Assistant message — may have text content and/or tool_calls.
+                        // Content can be a plain string OR an array of typed blocks
+                        // (MessageContent::Blocks via #[serde(untagged)]).
                         let mut assistant_msg = json!({
                             "role": "assistant",
                             "content": null,
                         });
 
-                        // Add content if present
-                        if let Some(content) = msg["content"].as_str() {
-                            if !content.is_empty() {
-                                assistant_msg["content"] = json!(content);
+                        let mut text_content = String::new();
+                        let mut tool_calls: Vec<Value> = Vec::new();
+
+                        if let Some(blocks) = msg["content"].as_array() {
+                            // Parse structured content blocks
+                            for block in blocks {
+                                match block["type"].as_str() {
+                                    Some("text") => {
+                                        if let Some(t) = block["text"].as_str() {
+                                            text_content = t.to_string();
+                                        }
+                                    }
+                                    Some("tool_use") => {
+                                        let id = block["id"].as_str().unwrap_or("").to_string();
+                                        let name = block["name"].as_str().unwrap_or("").to_string();
+                                        let args = block.get("input")
+                                            .map(|v| serde_json::to_string(v).unwrap_or_default())
+                                            .unwrap_or_default();
+                                        tool_calls.push(json!({
+                                            "id": id,
+                                            "type": "function",
+                                            "function": {
+                                                "name": name,
+                                                "arguments": args
+                                            }
+                                        }));
+                                    }
+                                    _ => {}
+                                }
                             }
+                        } else if let Some(s) = msg["content"].as_str() {
+                            text_content = s.to_string();
                         }
 
-                        // Add tool_calls if present (from metadata or direct)
-                        if let Some(tool_calls) = msg["metadata"]["tool_calls"].as_array() {
-                            if !tool_calls.is_empty() {
-                                assistant_msg["tool_calls"] = json!(tool_calls);
-                            }
+                        // OpenAI requires content to be null when tool_calls are present
+                        if !tool_calls.is_empty() {
+                            assistant_msg["tool_calls"] = json!(tool_calls);
+                        } else if !text_content.is_empty() {
+                            assistant_msg["content"] = json!(text_content);
                         }
 
                         assistant_msg

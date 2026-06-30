@@ -34,7 +34,7 @@ ADAPTER_FILE="target/wasm32-wasip1/release/wasi_snapshot_preview1.reactor.wasm"
 if [ ! -f "$ADAPTER_FILE" ]; then
     echo "📥 Downloading WASI adapter..."
     mkdir -p target/wasm32-wasip1/release
-    curl -L -o "$ADAPTER_FILE" "$ADAPTER_URL"
+    curl -x socks5://127.0.0.1:9060 -L -o "$ADAPTER_FILE" "$ADAPTER_URL"
 fi
 
 wasm-tools component new "$WASM_MODULE" --adapt "wasi_snapshot_preview1=$ADAPTER_FILE" -o "$WASM_COMPONENT"
